@@ -21,14 +21,15 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
-  const isAuth = ['/login', '/register'].includes(request.nextUrl.pathname)
+  const path = request.nextUrl.pathname
 
-  if (isDashboard && !user) {
+  // Protéger toutes les routes /dashboard/*
+  if (path.startsWith('/dashboard') && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (isAuth && user) {
+  // Rediriger si déjà connecté
+  if ((path === '/login' || path === '/register') && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

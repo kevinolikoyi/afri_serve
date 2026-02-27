@@ -218,29 +218,31 @@ export default function MenuPage() {
   )
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 lg:p-8 max-w-5xl">
 
       {/* Notifications */}
       {success && <div className="fixed top-6 right-6 z-50 bg-green-500/10 border border-green-500/30 text-green-400 px-5 py-3 rounded-xl text-sm font-medium shadow-lg">{success}</div>}
       {error && <div className="fixed top-6 right-6 z-50 bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-3 rounded-xl text-sm font-medium shadow-lg">{error}</div>}
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-6 lg:mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Gestion du menu</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="text-xl lg:text-2xl font-bold text-white">Gestion du menu</h1>
+          <p className="text-gray-400 mt-1 text-sm">
             {plats.length} plat{plats.length > 1 ? 's' : ''} • {plats.filter(p => p.disponible).length} disponible{plats.filter(p => p.disponible).length > 1 ? 's' : ''} • {categories.length} catégorie{categories.length > 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 lg:gap-3">
           <button onClick={() => setShowCatForm(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-sm font-medium transition-colors">
-            <FolderPlus size={16} /> Catégorie
+            className="flex items-center gap-1.5 px-3 lg:px-4 py-2.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs lg:text-sm font-medium transition-colors">
+            <FolderPlus size={15} /> <span className="hidden sm:inline">Catégorie</span>
           </button>
-          <button onClick={() => { setForm(FORM_INIT); setPreview(''); setShowPlatForm(true) }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors">
-            <Plus size={16} /> Ajouter un plat
-          </button>
+          {categories.length > 0 && (
+            <button onClick={() => { setForm(FORM_INIT); setPreview(''); setShowPlatForm(true) }}
+              className="flex items-center gap-1.5 px-3 lg:px-4 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs lg:text-sm font-bold transition-colors">
+              <Plus size={15} /> <span className="hidden sm:inline">Ajouter un plat</span><span className="sm:hidden">Plat</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -262,10 +264,29 @@ export default function MenuPage() {
         </div>
       )}
 
+      {/* Message si pas de catégorie */}
+      {categories.length === 0 && (
+        <div className="text-center py-16 border-2 border-dashed border-gray-800 rounded-2xl">
+          <div className="text-5xl mb-4">📁</div>
+          <p className="text-gray-400 font-medium mb-1">Commencez par créer une catégorie</p>
+          <p className="text-gray-600 text-sm mb-5">Ex : Plats du jour, Boissons, Desserts...</p>
+          <button onClick={() => setShowCatForm(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors">
+            <FolderPlus size={16} /> Créer une catégorie
+          </button>
+        </div>
+      )}
+
       {/* Gestion catégories */}
       {categories.length > 0 && (
         <div className="mb-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Catégories</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Catégories</p>
+            <button onClick={() => { setForm(FORM_INIT); setPreview(''); setShowPlatForm(true) }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-colors">
+              <Plus size={13} /> Ajouter un plat
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {categories.map(cat => (
               <div key={cat.id} className="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg">

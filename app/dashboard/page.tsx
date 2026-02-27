@@ -113,69 +113,81 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="p-8">
+    <div className="p-4 lg:p-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Bonjour 👋 {restaurant.nom}</h1>
-        <p className="text-gray-400 mt-1">Voici un aperçu de votre activité</p>
+      <div className="mb-6 lg:mb-8">
+        <h1 className="text-xl lg:text-2xl font-bold text-white">Bonjour 👋 {restaurant.nom}</h1>
+        <p className="text-gray-400 mt-1 text-sm">Voici un aperçu de votre activité</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 mb-6 lg:mb-8">
         {statCards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <Icon className={`${color} mb-3`} size={24} />
-            <div className="text-2xl font-bold text-white">{value}</div>
-            <div className="text-gray-400 text-sm mt-1">{label}</div>
+          <div key={label} className="bg-gray-900 rounded-2xl p-4 lg:p-6 border border-gray-800">
+            <Icon className={`${color} mb-2 lg:mb-3`} size={20} />
+            <div className="text-xl lg:text-2xl font-bold text-white">{value}</div>
+            <div className="text-gray-400 text-xs lg:text-sm mt-1">{label}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-5 lg:gap-6">
 
-        {/* QR Code */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-          <div className="flex items-center gap-3 mb-5">
-            <QrCode className="text-orange-500" size={22} />
-            <h2 className="font-bold text-white text-lg">QR Code & Lien public</h2>
+        {/* QR Code — affiché uniquement si au moins 1 plat */}
+        {stats.plats > 0 && <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border border-gray-800">
+          <div className="flex items-center gap-3 mb-4 lg:mb-5">
+            <QrCode className="text-orange-500" size={20} />
+            <h2 className="font-bold text-white">QR Code & Lien public</h2>
           </div>
 
           {/* URL publique */}
-          <div className="bg-gray-800 rounded-xl px-4 py-3 flex items-center justify-between mb-5">
-            <span className="text-orange-400 text-sm font-mono truncate">
+          <div className="bg-gray-800 rounded-xl px-3 lg:px-4 py-3 flex items-center justify-between mb-4 lg:mb-5">
+            <span className="text-orange-400 text-xs lg:text-sm font-mono truncate">
               {appUrl}/resto/{restaurant.slug}
             </span>
-            <Link href={`/resto/${restaurant.slug}`} target="_blank" className="ml-3 flex-shrink-0">
-              <ExternalLink size={16} className="text-gray-400 hover:text-white transition-colors" />
+            <Link href={`/resto/${restaurant.slug}`} target="_blank" className="ml-2 flex-shrink-0">
+              <ExternalLink size={15} className="text-gray-400 hover:text-white transition-colors" />
             </Link>
           </div>
 
           {/* QR Code canvas */}
           <div className="flex flex-col items-center gap-4">
-            <div className="bg-white rounded-2xl p-4 shadow-lg">
+            <div className="bg-white rounded-2xl p-3 lg:p-4 shadow-lg">
               <canvas ref={qrCanvasRef} />
             </div>
-            <p className="text-gray-500 text-sm text-center">
+            <p className="text-gray-500 text-xs lg:text-sm text-center">
               Affichez ce QR code sur vos tables ou comptoir
             </p>
-
-            {/* Boutons */}
             <div className="flex gap-3 w-full">
               <button onClick={downloadQR}
                 className="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white py-2.5 rounded-xl text-sm font-medium transition-colors">
-                <Download size={16} /> Télécharger
+                <Download size={15} /> Télécharger
               </button>
               <button onClick={printQR}
                 className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl text-sm font-bold transition-colors">
-                <Printer size={16} /> Imprimer
+                <Printer size={15} /> Imprimer
               </button>
             </div>
           </div>
         </div>
+        }
+
+        {/* Message si menu vide */}
+        {stats.plats === 0 && (
+          <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border-2 border-dashed border-gray-800 flex flex-col items-center justify-center text-center">
+            <div className="text-5xl mb-4">🍽️</div>
+            <p className="text-white font-semibold mb-1">Votre menu est vide</p>
+            <p className="text-gray-500 text-sm mb-5">Ajoutez vos plats pour activer votre page publique et générer votre QR code.</p>
+            <Link href="/dashboard/menu"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors">
+              🍽️ Créer mon menu
+            </Link>
+          </div>
+        )}
 
         {/* Actions rapides */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-          <h2 className="font-bold text-white text-lg mb-5">Actions rapides</h2>
+        <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border border-gray-800">
+          <h2 className="font-bold text-white mb-4 lg:mb-5">Actions rapides</h2>
           <div className="space-y-3">
             {[
               { href: '/dashboard/menu', label: '🍽️ Ajouter un plat', color: 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/15' },

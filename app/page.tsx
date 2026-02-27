@@ -291,7 +291,7 @@ export default function LandingPage() {
               className="bg-orange-500 hover:bg-orange-600 text-white px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-xl shadow-orange-500/25 hover:-translate-y-0.5">
               🚀 Commencer gratuitement
             </Link>
-            <a href={`https://wa.me/22900000000`}
+            <a href={`https://wa.me/22966209811`}
               target="_blank"
               className="bg-[#25D366] hover:opacity-90 text-white px-10 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/20">
               <MessageCircle size={20} /> Discuter sur WhatsApp

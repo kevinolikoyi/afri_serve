@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/auth/login')
   }
 
   return (
@@ -27,10 +27,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
         <div className="p-6 border-b border-gray-800">
-          <div className="flex items-center gap-2">
+          <a href="/" className="flex items-center gap-2">
             <QrCode className="text-orange-500" size={24} />
             <span className="text-xl font-bold">Menu<span className="text-orange-500">QR</span></span>
-          </div>
+          </a>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {nav.map(({ href, label, icon: Icon }) => (

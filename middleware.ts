@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request })
+  const response = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,22 +20,18 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
   const path = request.nextUrl.pathname
 
-  // Protéger toutes les routes /dashboard/*
+  // Protéger les routes dashboard uniquement
   if (path.startsWith('/dashboard') && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
-  // Rediriger si déjà connecté
-  if ((path === '/login' || path === '/register') && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
+  // Ne jamais bloquer l'accès à login/register
+  // même si une session est active
   return response
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/auth/login', '/auth/register'],
 }

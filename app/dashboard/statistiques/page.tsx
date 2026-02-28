@@ -30,18 +30,23 @@ export default function StatistiquesPage() {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: r } = await supabase.from('restaurants').select('id').eq('user_id', user.id).single()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    console.log('user:', user?.id, 'error:', userError)
+    if (!user) { setLoading(false); return }
+
+    const { data: r, error: rError } = await supabase
+      .from('restaurants').select('id').eq('user_id', user.id).single()
+    console.log('restaurant:', r?.id, 'error:', rError)
     if (!r) { setLoading(false); return }
 
-    const { data } = await supabase
+    const { data, error: cmdError } = await supabase
       .from('commandes')
       .select('*, commande_items(nom_plat, quantite, sous_total)')
       .eq('restaurant_id', r.id)
       .neq('statut', 'annulee')
       .order('created_at', { ascending: true })
 
+    console.log('commandes:', data?.length, 'error:', cmdError)
     setCommandes(data ?? [])
     setLoading(false)
   }
@@ -229,7 +234,7 @@ export default function StatistiquesPage() {
                   tickFormatter={v => v > 0 ? `${(v / 1000).toFixed(0)}k` : '0'} />
                 <Tooltip
                   contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, color: '#fff' }}
-                  formatter={(v: number) => [formatPrix(v), 'Ventes']} />
+                  formatter={(v: number | undefined) => [formatPrix(v ?? 0), 'Ventes']} />
                 <Area type="monotone" dataKey="ventes" stroke="#f97316" strokeWidth={2}
                   fill="url(#gradVentes)" dot={false} activeDot={{ r: 5, fill: '#f97316' }} />
               </AreaChart>

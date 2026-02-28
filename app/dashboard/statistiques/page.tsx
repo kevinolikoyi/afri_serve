@@ -5,7 +5,7 @@ import { formatPrix } from '@/lib/utils'
 import { TrendingUp, ShoppingBag, Users, UtensilsCrossed, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
 type Commande = {
@@ -18,8 +18,11 @@ type Commande = {
 }
 
 const COLORS = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#ec4899']
-
 const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+
+// Formatter typé pour recharts
+const fmtVentes = (v: unknown) => [formatPrix(Number(v) || 0), 'Ventes'] as [string, string]
+const fmtCount  = (v: unknown) => [String(Number(v) || 0), 'commandes'] as [string, string]
 
 export default function StatistiquesPage() {
   const supabase = createClient()
@@ -30,28 +33,24 @@ export default function StatistiquesPage() {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    console.log('user:', user?.id, 'error:', userError)
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
-    const { data: r, error: rError } = await supabase
+    const { data: r } = await supabase
       .from('restaurants').select('id').eq('user_id', user.id).single()
-    console.log('restaurant:', r?.id, 'error:', rError)
     if (!r) { setLoading(false); return }
 
-    const { data, error: cmdError } = await supabase
+    const { data } = await supabase
       .from('commandes')
       .select('*, commande_items(nom_plat, quantite, sous_total)')
       .eq('restaurant_id', r.id)
       .neq('statut', 'annulee')
       .order('created_at', { ascending: true })
 
-    console.log('commandes:', data?.length, 'error:', cmdError)
     setCommandes(data ?? [])
     setLoading(false)
   }
 
-  // ── Filtrer selon période ─────────────────────────────────
   function filtrerCommandes() {
     const now = new Date()
     return commandes.filter(c => {
@@ -67,7 +66,6 @@ export default function StatistiquesPage() {
   const nbCommandes = filtered.length
   const panier = nbCommandes > 0 ? totalVentes / nbCommandes : 0
 
-  // ── Comparer avec période précédente ──────────────────────
   function getPrecedent() {
     const now = new Date()
     return commandes.filter(c => {
@@ -83,17 +81,14 @@ export default function StatistiquesPage() {
   const totalPrec = precedent.reduce((s, c) => s + Number(c.montant_total), 0)
   const pctVentes = totalPrec > 0 ? Math.round(((totalVentes - totalPrec) / totalPrec) * 100) : null
 
-  // ── Données graphique ventes ──────────────────────────────
   function getVentesData() {
     if (periode === '12m') {
-      const data = MOIS.map((nom, i) => ({
+      return MOIS.map((nom, i) => ({
         nom,
-        ventes: filtered
-          .filter(c => new Date(c.created_at).getMonth() === i)
+        ventes: filtered.filter(c => new Date(c.created_at).getMonth() === i)
           .reduce((s, c) => s + Number(c.montant_total), 0),
         commandes: filtered.filter(c => new Date(c.created_at).getMonth() === i).length,
       }))
-      return data
     }
     const jours = periode === '7j' ? 7 : 30
     return Array.from({ length: jours }, (_, i) => {
@@ -112,7 +107,6 @@ export default function StatistiquesPage() {
     })
   }
 
-  // ── Top plats ─────────────────────────────────────────────
   function getTopPlats() {
     const map: Record<string, { nom: string; quantite: number; total: number }> = {}
     filtered.forEach(c => {
@@ -125,7 +119,6 @@ export default function StatistiquesPage() {
     return Object.values(map).sort((a, b) => b.quantite - a.quantite).slice(0, 6)
   }
 
-  // ── Types de commandes ────────────────────────────────────
   function getTypesData() {
     const types: Record<string, number> = { sur_place: 0, emporter: 0, livraison: 0 }
     filtered.forEach(c => { if (types[c.type] !== undefined) types[c.type]++ })
@@ -167,29 +160,13 @@ export default function StatistiquesPage() {
         </div>
       </div>
 
-      {/* ── KPIs ── */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 mb-6 lg:mb-8">
         {[
-          {
-            label: 'Chiffre d\'affaires', value: formatPrix(totalVentes),
-            icon: TrendingUp, color: 'text-orange-400', bg: 'bg-orange-500/10',
-            pct: pctVentes,
-          },
-          {
-            label: 'Commandes', value: nbCommandes,
-            icon: ShoppingBag, color: 'text-purple-400', bg: 'bg-purple-500/10',
-            pct: null,
-          },
-          {
-            label: 'Panier moyen', value: formatPrix(Math.round(panier)),
-            icon: UtensilsCrossed, color: 'text-blue-400', bg: 'bg-blue-500/10',
-            pct: null,
-          },
-          {
-            label: 'Clients uniques', value: new Set(commandes.map(c => c.id)).size,
-            icon: Users, color: 'text-green-400', bg: 'bg-green-500/10',
-            pct: null,
-          },
+          { label: 'Chiffre d\'affaires', value: formatPrix(totalVentes), icon: TrendingUp, color: 'text-orange-400', bg: 'bg-orange-500/10', pct: pctVentes },
+          { label: 'Commandes', value: nbCommandes, icon: ShoppingBag, color: 'text-purple-400', bg: 'bg-purple-500/10', pct: null },
+          { label: 'Panier moyen', value: formatPrix(Math.round(panier)), icon: UtensilsCrossed, color: 'text-blue-400', bg: 'bg-blue-500/10', pct: null },
+          { label: 'Clients uniques', value: new Set(commandes.map(c => c.id)).size, icon: Users, color: 'text-green-400', bg: 'bg-green-500/10', pct: null },
         ].map(({ label, value, icon: Icon, color, bg, pct }) => (
           <div key={label} className="bg-gray-900 rounded-2xl p-4 lg:p-5 border border-gray-800">
             <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center mb-3`}>
@@ -217,7 +194,7 @@ export default function StatistiquesPage() {
         </div>
       ) : (
         <>
-          {/* ── Graphique ventes ── */}
+          {/* Graphique ventes */}
           <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border border-gray-800 mb-5 lg:mb-6">
             <h2 className="font-bold text-white mb-5">Évolution des ventes</h2>
             <ResponsiveContainer width="100%" height={220}>
@@ -231,10 +208,10 @@ export default function StatistiquesPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="nom" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={v => v > 0 ? `${(v / 1000).toFixed(0)}k` : '0'} />
+                  tickFormatter={v => v > 0 ? `${(Number(v) / 1000).toFixed(0)}k` : '0'} />
                 <Tooltip
                   contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, color: '#fff' }}
-                  formatter={(v: number | undefined) => [formatPrix(v ?? 0), 'Ventes']} />
+                  formatter={fmtVentes} />
                 <Area type="monotone" dataKey="ventes" stroke="#f97316" strokeWidth={2}
                   fill="url(#gradVentes)" dot={false} activeDot={{ r: 5, fill: '#f97316' }} />
               </AreaChart>
@@ -243,7 +220,7 @@ export default function StatistiquesPage() {
 
           <div className="grid lg:grid-cols-2 gap-5 lg:gap-6 mb-5 lg:mb-6">
 
-            {/* ── Top plats ── */}
+            {/* Top plats */}
             <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border border-gray-800">
               <h2 className="font-bold text-white mb-5">🏆 Plats les plus commandés</h2>
               {topPlats.length === 0 ? (
@@ -264,10 +241,7 @@ export default function StatistiquesPage() {
                       </div>
                       <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all"
-                          style={{
-                            width: `${(plat.quantite / maxPlat) * 100}%`,
-                            background: COLORS[i % COLORS.length],
-                          }} />
+                          style={{ width: `${(plat.quantite / maxPlat) * 100}%`, background: COLORS[i % COLORS.length] }} />
                       </div>
                     </div>
                   ))}
@@ -275,7 +249,7 @@ export default function StatistiquesPage() {
               )}
             </div>
 
-            {/* ── Types de commandes ── */}
+            {/* Types de commandes */}
             <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border border-gray-800">
               <h2 className="font-bold text-white mb-5">📦 Types de commandes</h2>
               {typesData.length === 0 ? (
@@ -292,7 +266,7 @@ export default function StatistiquesPage() {
                       </Pie>
                       <Tooltip
                         contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, color: '#fff' }}
-                        formatter={(v: number) => [v, 'commandes']} />
+                        formatter={fmtCount} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="flex flex-wrap gap-3 justify-center mt-2">
@@ -309,7 +283,7 @@ export default function StatistiquesPage() {
             </div>
           </div>
 
-          {/* ── Graphique commandes par jour ── */}
+          {/* Commandes par jour */}
           <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border border-gray-800">
             <h2 className="font-bold text-white mb-5">Nombre de commandes</h2>
             <ResponsiveContainer width="100%" height={180}>
@@ -319,7 +293,7 @@ export default function StatistiquesPage() {
                 <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, color: '#fff' }}
-                  formatter={(v: number) => [v, 'commandes']} />
+                  formatter={fmtCount} />
                 <Bar dataKey="commandes" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>

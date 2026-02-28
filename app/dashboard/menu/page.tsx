@@ -452,8 +452,8 @@ export default function MenuPage() {
                   <p className="text-xs text-gray-500 mt-0.5">Visible sur votre menu public</p>
                 </div>
                 <button onClick={() => setForm(f => ({ ...f, disponible: !f.disponible }))}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${form.disponible ? 'bg-orange-500' : 'bg-gray-600'}`}>
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${form.disponible ? 'translate-x-7' : 'translate-x-1'}`} />
+                  className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${form.disponible ? 'bg-orange-500' : 'bg-gray-600'}`}>
+                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${form.disponible ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
             </div>

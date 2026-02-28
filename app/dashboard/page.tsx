@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrix } from '@/lib/utils'
 import { ShoppingBag, Users, UtensilsCrossed, TrendingUp, QrCode, ExternalLink, Download, Printer } from 'lucide-react'
@@ -16,6 +17,18 @@ export default function DashboardPage() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
   useEffect(() => { loadData() }, [])
+
+  // Recharger quand la page redevient visible (retour depuis menu)
+  useEffect(() => {
+    function handleFocus() { loadData() }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadData()
+    })
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser()

@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, UtensilsCrossed, ShoppingBag, Users, BarChart2, LogOut, QrCode, Menu, X } from 'lucide-react'
+import { LayoutDashboard, UtensilsCrossed, ShoppingBag, Users, BarChart2, LogOut, QrCode, Menu, X, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
 
@@ -11,57 +11,8 @@ const nav = [
   { href: '/dashboard/commandes', label: 'Commandes', icon: ShoppingBag },
   { href: '/dashboard/clients', label: 'Clients', icon: Users },
   { href: '/dashboard/statistiques', label: 'Statistiques', icon: BarChart2 },
+  { href: '/dashboard/parametres', label: 'Paramètres', icon: Settings },
 ]
-
-function SidebarContent({
-  pathname,
-  closeSidebar,
-  onLogout,
-}: {
-  pathname: string | null
-  closeSidebar: () => void
-  onLogout: () => void
-}) {
-  return (
-    <>
-      <div className="p-6 border-b border-gray-800 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
-          <QrCode className="text-orange-500" size={24} />
-          <span className="text-xl font-bold">Menu<span className="text-orange-500">QR</span></span>
-        </a>
-        {/* Fermer sur mobile */}
-        <button onClick={closeSidebar} className="lg:hidden text-gray-400 hover:text-white">
-          <X size={20} />
-        </button>
-      </div>
-      <nav className="flex-1 p-4 space-y-1">
-        {nav.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            onClick={() => closeSidebar()}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
-              ${pathname === href
-                ? 'bg-orange-500 text-white'
-                : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          >
-            <Icon size={18} />
-            {label}
-          </Link>
-        ))}
-      </nav>
-      <div className="p-4 border-t border-gray-800">
-        <button
-          onClick={onLogout}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white w-full transition-colors"
-        >
-          <LogOut size={18} />
-          Déconnexion
-        </button>
-      </div>
-    </>
-  )
-}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -74,12 +25,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/auth/login')
   }
 
+  const SidebarContent = () => (
+    <>
+      <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2">
+          <QrCode className="text-orange-500" size={24} />
+          <span className="text-xl font-bold">Menu<span className="text-orange-500">QR</span></span>
+        </a>
+        {/* Fermer sur mobile */}
+        <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
+          <X size={20} />
+        </button>
+      </div>
+      <nav className="flex-1 p-4 space-y-1">
+        {nav.map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href}
+            onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
+              ${pathname === href
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
+            <Icon size={18} />
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <div className="p-4 border-t border-gray-800">
+        <button onClick={handleLogout}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white w-full transition-colors">
+          <LogOut size={18} />
+          Déconnexion
+        </button>
+      </div>
+    </>
+  )
+
   return (
     <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
 
       {/* ── Sidebar desktop ── */}
       <aside className="hidden lg:flex w-64 bg-gray-900 border-r border-gray-800 flex-col flex-shrink-0">
-        <SidebarContent pathname={pathname} closeSidebar={() => setSidebarOpen(false)} onLogout={handleLogout} />
+        <SidebarContent />
       </aside>
 
       {/* ── Sidebar mobile (drawer) ── */}
@@ -89,7 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
           {/* Drawer */}
           <aside className="absolute left-0 top-0 h-full w-64 bg-gray-900 border-r border-gray-800 flex flex-col z-10">
-            <SidebarContent pathname={pathname} closeSidebar={() => setSidebarOpen(false)} onLogout={handleLogout} />
+            <SidebarContent />
           </aside>
         </div>
       )}

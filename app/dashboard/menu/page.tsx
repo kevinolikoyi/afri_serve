@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrix } from '@/lib/utils'
 import type { Plat, Categorie, Restaurant } from '@/types'
-import { Plus, Pencil, Trash2, Eye, EyeOff, FolderPlus, X, ChevronDown, ImagePlus, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, FolderPlus, X, ChevronDown, ImagePlus, Loader2, Camera, Images } from 'lucide-react'
 
 type PlatForm = {
   id?: string
@@ -22,6 +22,7 @@ const FORM_INIT: PlatForm = {
 export default function MenuPage() {
   const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [categories, setCategories] = useState<Categorie[]>([])
@@ -61,44 +62,36 @@ export default function MenuPage() {
     else { setError(msg); setTimeout(() => setError(''), 4000) }
   }
 
-  // ── Upload image ──────────────────────────────────────────
+  // ── Upload image (galerie ou appareil photo) ──────────────
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !restaurant) return
 
-    // Validation
     if (!file.type.startsWith('image/')) { notify('Fichier invalide. Choisissez une image.', 'error'); return }
-    if (file.size > 3 * 1024 * 1024) { notify('Image trop lourde. Maximum 3 Mo.', 'error'); return }
+    if (file.size > 5 * 1024 * 1024) { notify('Image trop lourde. Maximum 5 Mo.', 'error'); return }
 
-    // Aperçu local immédiat
     setPreview(URL.createObjectURL(file))
     setUploading(true)
 
-    // Supprimer l'ancienne image si elle existe
     if (form.image_url) {
       const oldPath = form.image_url.split('/plats/')[1]
       if (oldPath) await supabase.storage.from('plats').remove([oldPath])
     }
 
-    // Upload vers Supabase Storage
-    const ext = file.name.split('.').pop()
+    const ext = file.name.split('.').pop() || 'jpg'
     const fileName = `${restaurant.id}/${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage
-      .from('plats')
-      .upload(fileName, file, { upsert: true })
+      .from('plats').upload(fileName, file, { upsert: true })
 
     if (uploadError) {
       notify('Erreur upload : ' + uploadError.message, 'error')
-      setPreview('')
-      setUploading(false)
-      return
+      setPreview(''); setUploading(false); return
     }
 
-    // Récupérer l'URL publique
     const { data } = supabase.storage.from('plats').getPublicUrl(fileName)
     setForm(f => ({ ...f, image_url: data.publicUrl }))
     setUploading(false)
-    notify('Image uploadée ✅')
+    notify('Photo ajoutée ✅')
   }
 
   async function removeImage() {
@@ -109,6 +102,7 @@ export default function MenuPage() {
     setForm(f => ({ ...f, image_url: '' }))
     setPreview('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
 
   // ── Sauvegarder un plat ───────────────────────────────────
@@ -118,7 +112,6 @@ export default function MenuPage() {
     if (!form.prix || isNaN(Number(form.prix)) || Number(form.prix) <= 0) {
       notify('Le prix doit être un nombre valide.', 'error'); return
     }
-
     setLoading(true)
     const payload = {
       restaurant_id: restaurant.id,
@@ -129,7 +122,6 @@ export default function MenuPage() {
       disponible: form.disponible,
       image_url: form.image_url || null,
     }
-
     if (form.id) {
       const { error } = await supabase.from('plats').update(payload).eq('id', form.id)
       if (error) { notify('Erreur : ' + error.message, 'error'); setLoading(false); return }
@@ -139,34 +131,25 @@ export default function MenuPage() {
       if (error) { notify('Erreur : ' + error.message, 'error'); setLoading(false); return }
       notify('Plat ajouté ✅')
     }
-
-    closeForm()
-    await loadData()
-    setLoading(false)
+    closeForm(); await loadData(); setLoading(false)
   }
 
   function closeForm() {
-    setShowPlatForm(false)
-    setForm(FORM_INIT)
-    setPreview('')
+    setShowPlatForm(false); setForm(FORM_INIT); setPreview('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
 
   function openEdit(plat: Plat) {
     setForm({
-      id: plat.id,
-      nom: plat.nom,
-      description: plat.description ?? '',
-      prix: String(plat.prix),
-      categorie_id: plat.categorie_id ?? '',
-      disponible: plat.disponible,
-      image_url: plat.image_url ?? '',
+      id: plat.id, nom: plat.nom, description: plat.description ?? '',
+      prix: String(plat.prix), categorie_id: plat.categorie_id ?? '',
+      disponible: plat.disponible, image_url: plat.image_url ?? '',
     })
     setPreview(plat.image_url ?? '')
     setShowPlatForm(true)
   }
 
-  // ── Catégorie ─────────────────────────────────────────────
   async function saveCategorie() {
     if (!restaurant || !catNom.trim()) { notify('Nom obligatoire.', 'error'); return }
     setLoading(true)
@@ -175,8 +158,7 @@ export default function MenuPage() {
     })
     if (error) { notify('Erreur : ' + error.message, 'error'); setLoading(false); return }
     notify('Catégorie créée ✅')
-    setCatNom(''); setShowCatForm(false)
-    await loadData(); setLoading(false)
+    setCatNom(''); setShowCatForm(false); await loadData(); setLoading(false)
   }
 
   async function deleteCategorie(id: string) {
@@ -184,8 +166,7 @@ export default function MenuPage() {
     if (nb > 0) { notify(`${nb} plat(s) dans cette catégorie. Déplacez-les d'abord.`, 'error'); return }
     if (!confirm('Supprimer cette catégorie ?')) return
     await supabase.from('categories').delete().eq('id', id)
-    notify('Catégorie supprimée')
-    await loadData()
+    notify('Catégorie supprimée'); await loadData()
   }
 
   async function toggleDispo(plat: Plat) {
@@ -201,8 +182,7 @@ export default function MenuPage() {
       if (path) await supabase.storage.from('plats').remove([path])
     }
     await supabase.from('plats').delete().eq('id', id)
-    notify('Plat supprimé')
-    setPlats(p => p.filter(pl => pl.id !== id))
+    notify('Plat supprimé'); setPlats(p => p.filter(pl => pl.id !== id))
   }
 
   const platsFiltres = filterCat === 'all' ? plats
@@ -221,8 +201,14 @@ export default function MenuPage() {
     <div className="p-4 lg:p-8 max-w-5xl">
 
       {/* Notifications */}
-      {success && <div className="fixed top-6 right-6 z-50 bg-green-500/10 border border-green-500/30 text-green-400 px-5 py-3 rounded-xl text-sm font-medium shadow-lg">{success}</div>}
-      {error && <div className="fixed top-6 right-6 z-50 bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-3 rounded-xl text-sm font-medium shadow-lg">{error}</div>}
+      {success && <div className="fixed top-4 right-4 z-50 bg-green-500/10 border border-green-500/30 text-green-400 px-5 py-3 rounded-xl text-sm font-medium shadow-lg">{success}</div>}
+      {error && <div className="fixed top-4 right-4 z-50 bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-3 rounded-xl text-sm font-medium shadow-lg">{error}</div>}
+
+      {/* Inputs fichier cachés */}
+      {/* Galerie photo */}
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+      {/* Appareil photo */}
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" />
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6 lg:mb-8">
@@ -245,24 +231,6 @@ export default function MenuPage() {
           )}
         </div>
       </div>
-
-      {/* Filtres catégories */}
-      {categories.length > 0 && (
-        <div className="flex items-center gap-2 mb-6 flex-wrap">
-          {[
-            { id: 'all', nom: 'Tous', count: plats.length },
-            ...categories.map(c => ({ id: c.id, nom: c.nom, count: plats.filter(p => p.categorie_id === c.id).length })),
-            { id: 'sans', nom: 'Sans catégorie', count: plats.filter(p => !p.categorie_id).length },
-          ].map(({ id, nom, count }) => (
-            <button key={id} onClick={() => setFilterCat(id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2
-                ${filterCat === id ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'}`}>
-              {nom}
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterCat === id ? 'bg-white/20' : 'bg-gray-700'}`}>{count}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Message si pas de catégorie */}
       {categories.length === 0 && (
@@ -299,12 +267,29 @@ export default function MenuPage() {
         </div>
       )}
 
+      {/* Filtres */}
+      {categories.length > 0 && (
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          {[
+            { id: 'all', nom: 'Tous', count: plats.length },
+            ...categories.map(c => ({ id: c.id, nom: c.nom, count: plats.filter(p => p.categorie_id === c.id).length })),
+            { id: 'sans', nom: 'Sans catégorie', count: plats.filter(p => !p.categorie_id).length },
+          ].map(({ id, nom, count }) => (
+            <button key={id} onClick={() => setFilterCat(id)}
+              className={`px-3 py-1.5 rounded-full text-xs lg:text-sm font-medium transition-colors flex items-center gap-1.5
+                ${filterCat === id ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'}`}>
+              {nom}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterCat === id ? 'bg-white/20' : 'bg-gray-700'}`}>{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Liste plats */}
-      {platsFiltres.length === 0 ? (
-        <div className="text-center py-24 text-gray-600">
-          <div className="text-5xl mb-4">🍽️</div>
-          <p className="text-lg font-medium text-gray-500 mb-2">Aucun plat pour l'instant</p>
-          <p className="text-sm">Cliquez sur "Ajouter un plat" pour commencer</p>
+      {platsFiltres.length === 0 && categories.length > 0 ? (
+        <div className="text-center py-16 text-gray-600">
+          <div className="text-4xl mb-3">🍽️</div>
+          <p className="text-gray-500 text-sm">Aucun plat dans cette catégorie</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -312,42 +297,38 @@ export default function MenuPage() {
             const cat = categories.find(c => c.id === plat.categorie_id)
             return (
               <div key={plat.id}
-                className={`bg-gray-900 border rounded-xl px-5 py-4 flex items-center justify-between transition-all
+                className={`bg-gray-900 border rounded-xl px-4 lg:px-5 py-3 lg:py-4 flex items-center justify-between transition-all
                   ${plat.disponible ? 'border-gray-800 hover:border-gray-700' : 'border-gray-800/50 opacity-60'}`}>
-                <div className="flex items-center gap-4">
-                  {/* Miniature */}
+                <div className="flex items-center gap-3">
                   {plat.image_url ? (
-                    <img src={plat.image_url} alt={plat.nom}
-                      className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-gray-700" />
+                    <img src={plat.image_url} alt={plat.nom} className="w-12 h-12 lg:w-14 lg:h-14 rounded-xl object-cover flex-shrink-0 border border-gray-700" />
                   ) : (
-                    <div className="w-14 h-14 rounded-xl bg-gray-800 flex items-center justify-center flex-shrink-0 border border-gray-700">
-                      <span className="text-2xl">🍽️</span>
-                    </div>
+                    <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-gray-800 flex items-center justify-center flex-shrink-0 text-xl">🍽️</div>
                   )}
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${plat.disponible ? 'bg-green-400' : 'bg-gray-600'}`} />
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-white">{plat.nom}</p>
+                      <p className="font-semibold text-white text-sm lg:text-base">{plat.nom}</p>
                       {cat && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 font-medium">{cat.nom}</span>}
                       {!plat.disponible && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-500">Indisponible</span>}
                     </div>
-                    {plat.description && <p className="text-sm text-gray-500 mt-0.5 max-w-lg truncate">{plat.description}</p>}
+                    {plat.description && <p className="text-xs lg:text-sm text-gray-500 mt-0.5 max-w-xs lg:max-w-lg truncate">{plat.description}</p>}
                   </div>
                 </div>
-                <div className="flex items-center gap-5">
-                  <span className="text-orange-400 font-bold text-lg">{formatPrix(plat.prix)}</span>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => toggleDispo(plat)} title={plat.disponible ? 'Masquer' : 'Afficher'}
-                      className="p-2 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-gray-800">
-                      {plat.disponible ? <Eye size={16} /> : <EyeOff size={16} />}
+                <div className="flex items-center gap-2 lg:gap-4">
+                  <span className="text-orange-400 font-bold text-sm lg:text-base">{formatPrix(plat.prix)}</span>
+                  <div className="flex items-center gap-0.5 lg:gap-1">
+                    <button onClick={() => toggleDispo(plat)}
+                      className="p-1.5 lg:p-2 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-gray-800">
+                      {plat.disponible ? <Eye size={15} /> : <EyeOff size={15} />}
                     </button>
                     <button onClick={() => openEdit(plat)}
-                      className="p-2 text-gray-500 hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-800">
-                      <Pencil size={16} />
+                      className="p-1.5 lg:p-2 text-gray-500 hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-800">
+                      <Pencil size={15} />
                     </button>
                     <button onClick={() => deletePlat(plat.id)}
-                      className="p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-gray-800">
-                      <Trash2 size={16} />
+                      className="p-1.5 lg:p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-gray-800">
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>
@@ -359,55 +340,71 @@ export default function MenuPage() {
 
       {/* ── Modal Plat ── */}
       {showPlatForm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-lg border border-gray-800 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-gray-900 rounded-t-3xl sm:rounded-2xl p-6 w-full sm:max-w-lg border border-gray-800 shadow-2xl max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-white">{form.id ? '✏️ Modifier le plat' : '➕ Nouveau plat'}</h2>
               <button onClick={closeForm} className="text-gray-500 hover:text-white transition-colors"><X size={20} /></button>
             </div>
 
             <div className="space-y-4">
 
-              {/* Upload image */}
+              {/* Zone photo */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1.5">Photo du plat</label>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
 
                 {imgSrc ? (
                   <div className="relative group">
-                    <img src={imgSrc} alt="aperçu"
-                      className="w-full h-48 object-cover rounded-xl border border-gray-700" />
+                    <img src={imgSrc} alt="aperçu" className="w-full h-44 object-cover rounded-xl border border-gray-700" />
                     {uploading && (
                       <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center">
                         <Loader2 className="text-white animate-spin" size={28} />
                       </div>
                     )}
                     {!uploading && (
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-xl transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-xl transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                         <button onClick={() => fileInputRef.current?.click()}
                           className="bg-white text-gray-900 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-gray-100">
-                          <ImagePlus size={14} /> Changer
+                          <Images size={13} /> Galerie
+                        </button>
+                        <button onClick={() => cameraInputRef.current?.click()}
+                          className="bg-white text-gray-900 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-gray-100">
+                          <Camera size={13} /> Caméra
                         </button>
                         <button onClick={removeImage}
                           className="bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-red-600">
-                          <Trash2 size={14} /> Supprimer
+                          <Trash2 size={13} /> Supprimer
                         </button>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <button onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-36 border-2 border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-orange-500 hover:bg-orange-500/5 transition-all group">
-                    {uploading ? (
-                      <Loader2 className="text-orange-500 animate-spin" size={28} />
-                    ) : (
-                      <>
-                        <ImagePlus className="text-gray-600 group-hover:text-orange-500 transition-colors" size={28} />
-                        <p className="text-sm text-gray-500 group-hover:text-gray-400">Cliquez pour ajouter une photo</p>
-                        <p className="text-xs text-gray-600">JPG, PNG, WEBP • Max 3 Mo</p>
-                      </>
-                    )}
-                  </button>
+                  <div className="space-y-2">
+                    {/* Zone vide avec deux boutons */}
+                    <div className="border-2 border-dashed border-gray-700 rounded-xl p-6 flex flex-col items-center gap-3">
+                      {uploading ? (
+                        <Loader2 className="text-orange-500 animate-spin" size={28} />
+                      ) : (
+                        <>
+                          <ImagePlus className="text-gray-600" size={28} />
+                          <p className="text-sm text-gray-500">Choisissez une source</p>
+                          <div className="flex gap-3 w-full">
+                            {/* Galerie */}
+                            <button onClick={() => fileInputRef.current?.click()}
+                              className="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2.5 rounded-xl text-sm font-medium transition-colors">
+                              <Images size={16} /> Galerie
+                            </button>
+                            {/* Appareil photo */}
+                            <button onClick={() => cameraInputRef.current?.click()}
+                              className="flex-1 flex items-center justify-center gap-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 py-2.5 rounded-xl text-sm font-medium transition-colors border border-orange-500/20">
+                              <Camera size={16} /> Caméra
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-600">JPG, PNG, WEBP • Max 5 Mo</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -428,7 +425,7 @@ export default function MenuPage() {
               </div>
 
               {/* Prix + Catégorie */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Prix (F CFA) <span className="text-orange-500">*</span></label>
                   <input type="number" placeholder="Ex: 1500" value={form.prix}
@@ -477,8 +474,8 @@ export default function MenuPage() {
 
       {/* ── Modal Catégorie ── */}
       {showCatForm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm border border-gray-800 shadow-2xl">
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-gray-900 rounded-t-3xl sm:rounded-2xl p-6 w-full sm:max-w-sm border border-gray-800 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-white">📁 Nouvelle catégorie</h2>
               <button onClick={() => { setShowCatForm(false); setCatNom('') }} className="text-gray-500 hover:text-white transition-colors"><X size={20} /></button>

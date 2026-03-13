@@ -3,30 +3,27 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrix, formatDate } from '@/lib/utils'
 import { Search, X, ArrowUpDown } from 'lucide-react'
+import { useRole } from '@/lib/useRole'
 
 export default function ClientsPage() {
   const supabase = createClient()
+  const { isAdmin, restaurantId, loading: roleLoading } = useRole()
+
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  // Filtres
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'nombre_commandes' | 'total_depense' | 'created_at'>('nombre_commandes')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (!roleLoading && restaurantId) loadData()
+  }, [roleLoading, restaurantId])
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: restaurant } = await supabase
-      .from('restaurants').select('id').eq('user_id', user.id).single()
-    if (!restaurant) { setLoading(false); return }
-
+    if (!restaurantId) return
     const { data } = await supabase
       .from('clients').select('*')
-      .eq('restaurant_id', restaurant.id)
-
+      .eq('restaurant_id', restaurantId)
     setClients(data ?? [])
     setLoading(false)
   }
@@ -35,10 +32,7 @@ export default function ClientsPage() {
     const q = search.toLowerCase().trim()
     let result = clients.filter(c => {
       if (!q) return true
-      return (
-        c.nom?.toLowerCase().includes(q) ||
-        c.telephone?.toLowerCase().includes(q)
-      )
+      return c.nom?.toLowerCase().includes(q) || c.telephone?.toLowerCase().includes(q)
     })
     result = [...result].sort((a, b) => {
       const va = a[sortBy] ?? 0
@@ -54,8 +48,7 @@ export default function ClientsPage() {
   }
 
   const SortBtn = ({ col, label }: { col: typeof sortBy; label: string }) => (
-    <button
-      onClick={() => toggleSort(col)}
+    <button onClick={() => toggleSort(col)}
       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-colors
         ${sortBy === col
           ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
@@ -66,7 +59,7 @@ export default function ClientsPage() {
     </button>
   )
 
-  if (loading) return (
+  if (loading || roleLoading) return (
     <div className="flex items-center justify-center h-full">
       <div className="text-gray-500">Chargement...</div>
     </div>
@@ -89,33 +82,26 @@ export default function ClientsPage() {
         </div>
       ) : (
         <>
-          {/* Barre recherche + tris */}
           <div className="mb-5 space-y-3">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Rechercher par nom ou téléphone..."
-                className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
-              />
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors" />
               {search && (
                 <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
                   <X size={14} />
                 </button>
               )}
             </div>
-
-            {/* Tris */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-gray-600">Trier par :</span>
               <SortBtn col="nombre_commandes" label="Commandes" />
-              <SortBtn col="total_depense" label="Total dépensé" />
+              {/* Tri par total uniquement pour admin */}
+              {isAdmin && <SortBtn col="total_depense" label="Total dépensé" />}
               <SortBtn col="created_at" label="Date d'inscription" />
             </div>
-
-            {(search) && (
+            {search && (
               <p className="text-xs text-gray-500">
                 {filtered.length} résultat{filtered.length > 1 ? 's' : ''} sur {clients.length}
               </p>
@@ -137,9 +123,12 @@ export default function ClientsPage() {
                 <table className="w-full">
                   <thead className="bg-gray-900">
                     <tr>
-                      {['Nom', 'Téléphone', 'Commandes', 'Total dépensé', 'Depuis'].map(h => (
-                        <th key={h} className="text-left px-6 py-4 text-sm font-medium text-gray-400">{h}</th>
-                      ))}
+                      <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Nom</th>
+                      <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Téléphone</th>
+                      <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Commandes</th>
+                      {/* Colonne total masquée pour staff */}
+                      {isAdmin && <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Total dépensé</th>}
+                      <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Depuis</th>
                     </tr>
                   </thead>
                   <tbody className="bg-gray-950 divide-y divide-gray-800">
@@ -152,7 +141,9 @@ export default function ClientsPage() {
                             {client.nombre_commandes}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-orange-400 font-medium">{formatPrix(client.total_depense)}</td>
+                        {isAdmin && (
+                          <td className="px-6 py-4 text-orange-400 font-medium">{formatPrix(client.total_depense)}</td>
+                        )}
                         <td className="px-6 py-4 text-gray-500 text-sm">{formatDate(client.created_at)}</td>
                       </tr>
                     ))}
@@ -174,7 +165,11 @@ export default function ClientsPage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-800">
-                      <span className="text-orange-400 font-bold">{formatPrix(client.total_depense)}</span>
+                      {/* Total masqué pour staff */}
+                      {isAdmin
+                        ? <span className="text-orange-400 font-bold">{formatPrix(client.total_depense)}</span>
+                        : <span />
+                      }
                       <span className="text-gray-500 text-xs">{formatDate(client.created_at)}</span>
                     </div>
                   </div>

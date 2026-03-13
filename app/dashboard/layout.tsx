@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, UtensilsCrossed, ShoppingBag, Users, BarChart2, LogOut, QrCode, Menu, X, Settings } from 'lucide-react'
+import { LayoutDashboard, UtensilsCrossed, ShoppingBag, Users, BarChart2, LogOut, QrCode, Menu, X, CircleUser } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
 
@@ -11,7 +11,7 @@ const nav = [
   { href: '/dashboard/commandes', label: 'Commandes', icon: ShoppingBag },
   { href: '/dashboard/clients', label: 'Clients', icon: Users },
   { href: '/dashboard/statistiques', label: 'Statistiques', icon: BarChart2 },
-  { href: '/dashboard/parametres', label: 'Paramètres', icon: Settings },
+  { href: '/dashboard/profil', label: 'Profil', icon: CircleUser },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

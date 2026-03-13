@@ -161,7 +161,7 @@ export default function RegisterPage() {
           <div className="space-y-4">
             {[
               { key: 'nomRestaurant', label: 'Nom du restaurant *', placeholder: 'Chez Maman', type: 'text' },
-              { key: 'whatsapp', label: 'Numéro WhatsApp *', placeholder: '+229 97 00 00 00', type: 'tel' },
+              { key: 'whatsapp', label: 'Numéro WhatsApp *', placeholder: '+229 01 97 00 00 00', type: 'tel' },
               { key: 'ville', label: 'Ville', placeholder: 'Cotonou', type: 'text' },
               { key: 'email', label: 'Email *', placeholder: 'vous@restaurant.com', type: 'email' },
               { key: 'password', label: 'Mot de passe *', placeholder: '••••••••', type: 'password' },

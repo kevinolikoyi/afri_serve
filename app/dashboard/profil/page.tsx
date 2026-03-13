@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { genererSlug } from '@/lib/utils'
 import type { Restaurant } from '@/types'
-import { Save, Store } from 'lucide-react'
+import { Save, CircleUser } from 'lucide-react'
 
-export default function ParalametresPage() {
+export default function ProfilPage() {
   const supabase = createClient()
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [form, setForm] = useState({
@@ -81,13 +81,13 @@ export default function ParalametresPage() {
       {error && <div className="fixed top-4 right-4 z-50 bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-3 rounded-xl text-sm font-medium shadow-lg">{error}</div>}
 
       <div className="mb-6 lg:mb-8">
-        <h1 className="text-xl lg:text-2xl font-bold text-white">Paramètres</h1>
+        <h1 className="text-xl lg:text-2xl font-bold text-white">Profil</h1>
         <p className="text-gray-400 mt-1 text-sm">Mettez à jour les informations de votre restaurant</p>
       </div>
 
       <div className="bg-gray-900 rounded-2xl p-5 lg:p-6 border border-gray-800">
         <div className="flex items-center gap-3 mb-6">
-          <Store className="text-orange-500" size={20} />
+          <CircleUser className="text-orange-500" size={20} />
           <h2 className="font-bold text-white">Informations du restaurant</h2>
         </div>
 

@@ -1,5 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+import { useEffect, useState, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { formatPrix, formatDate } from '@/lib/utils'
+import { Search, X, Filter } from 'lucide-react'
 
 const STATUT_COLORS: Record<string, string> = {
   nouvelle:  'bg-blue-500/10 text-blue-400',
@@ -14,37 +17,174 @@ const STATUT_LABELS: Record<string, string> = {
   prete: 'Prête', livree: 'Livrée', annulee: 'Annulée',
 }
 
-export default async function CommandesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: restaurant } = await supabase
-    .from('restaurants').select('id').eq('user_id', user!.id).single()
+const TYPE_LABELS: Record<string, string> = {
+  sur_place: 'Sur place', emporter: 'À emporter', livraison: 'Livraison',
+}
 
-  const { data: commandes } = await supabase
-    .from('commandes')
-    .select('*, clients(nom, telephone), commande_items(nom_plat, quantite, sous_total)')
-    .eq('restaurant_id', restaurant!.id)
-    .order('created_at', { ascending: false })
+export default function CommandesPage() {
+  const supabase = createClient()
+  const [commandes, setCommandes] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Filtres
+  const [search, setSearch] = useState('')
+  const [filterStatut, setFilterStatut] = useState('')
+  const [filterType, setFilterType] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+
+  useEffect(() => { loadData() }, [])
+
+  async function loadData() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: restaurant } = await supabase
+      .from('restaurants').select('id').eq('user_id', user.id).single()
+    if (!restaurant) { setLoading(false); return }
+
+    const { data } = await supabase
+      .from('commandes')
+      .select('*, clients(nom, telephone), commande_items(nom_plat, quantite, sous_total)')
+      .eq('restaurant_id', restaurant.id)
+      .order('created_at', { ascending: false })
+
+    setCommandes(data ?? [])
+    setLoading(false)
+  }
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    return commandes.filter(cmd => {
+      // Recherche texte : nom client, téléphone, numéro commande, nom plat
+      if (q) {
+        const nomClient = cmd.clients?.nom?.toLowerCase() ?? ''
+        const tel = cmd.clients?.telephone?.toLowerCase() ?? ''
+        const numero = cmd.numero?.toLowerCase() ?? ''
+        const plats = cmd.commande_items?.map((i: any) => i.nom_plat.toLowerCase()).join(' ') ?? ''
+        if (!nomClient.includes(q) && !tel.includes(q) && !numero.includes(q) && !plats.includes(q))
+          return false
+      }
+      if (filterStatut && cmd.statut !== filterStatut) return false
+      if (filterType && cmd.type !== filterType) return false
+      return true
+    })
+  }, [commandes, search, filterStatut, filterType])
+
+  const hasFilter = search || filterStatut || filterType
+
+  function resetFilters() {
+    setSearch('')
+    setFilterStatut('')
+    setFilterType('')
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-gray-500">Chargement...</div>
+    </div>
+  )
 
   return (
     <div className="p-4 lg:p-8">
-      <div className="mb-6 lg:mb-8">
+      {/* Header */}
+      <div className="mb-5 lg:mb-6">
         <h1 className="text-xl lg:text-2xl font-bold text-white">Commandes</h1>
         <p className="text-gray-400 mt-1 text-sm">
-          {commandes?.length ?? 0} commande{(commandes?.length ?? 0) > 1 ? 's' : ''} au total
+          {commandes.length} commande{commandes.length > 1 ? 's' : ''} au total
         </p>
       </div>
 
-      <div className="space-y-3">
-        {(!commandes || commandes.length === 0) && (
-          <div className="text-center py-20 text-gray-500">
-            <div className="text-5xl mb-4">📋</div>
-            <p className="text-lg mb-1">Aucune commande pour l&apos;instant</p>
-            <p className="text-sm">Les commandes apparaîtront ici dès qu&apos;un client passera commande</p>
+      {/* Barre de recherche + filtres */}
+      <div className="mb-5 space-y-3">
+        {/* Ligne 1 : search + bouton filtres */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher par client, téléphone, n° commande, plat..."
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors
+              ${showFilters || filterStatut || filterType
+                ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
+                : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white'}`}>
+            <Filter size={15} />
+            <span className="hidden sm:inline">Filtres</span>
+            {(filterStatut || filterType) && (
+              <span className="bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                {[filterStatut, filterType].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Ligne 2 : filtres déroulants */}
+        {showFilters && (
+          <div className="flex flex-wrap gap-2">
+            {/* Statut */}
+            <select
+              value={filterStatut}
+              onChange={e => setFilterStatut(e.target.value)}
+              className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-orange-500 transition-colors">
+              <option value="">Tous les statuts</option>
+              {Object.entries(STATUT_LABELS).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+
+            {/* Type */}
+            <select
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-orange-500 transition-colors">
+              <option value="">Tous les types</option>
+              {Object.entries(TYPE_LABELS).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+
+            {hasFilter && (
+              <button onClick={resetFilters}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 text-gray-400 hover:text-white text-sm transition-colors">
+                <X size={13} /> Réinitialiser
+              </button>
+            )}
           </div>
         )}
 
-        {commandes?.map(cmd => (
+        {/* Résultats */}
+        {hasFilter && (
+          <p className="text-xs text-gray-500">
+            {filtered.length} résultat{filtered.length > 1 ? 's' : ''} sur {commandes.length}
+          </p>
+        )}
+      </div>
+
+      {/* Liste commandes */}
+      <div className="space-y-3">
+        {filtered.length === 0 && (
+          <div className="text-center py-20 text-gray-500">
+            <div className="text-4xl mb-3">🔍</div>
+            <p className="text-sm">Aucune commande ne correspond à votre recherche</p>
+            {hasFilter && (
+              <button onClick={resetFilters} className="mt-3 text-orange-400 hover:underline text-sm">
+                Effacer les filtres
+              </button>
+            )}
+          </div>
+        )}
+
+        {filtered.map(cmd => (
           <div key={cmd.id}
             className="bg-gray-900 border border-gray-800 rounded-xl p-4 lg:p-6 hover:border-gray-700 transition-colors">
 
@@ -57,7 +197,7 @@ export default async function CommandesPage() {
                     {STATUT_LABELS[cmd.statut]}
                   </span>
                   <span className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400">
-                    {cmd.type.replace('_', ' ')}
+                    {TYPE_LABELS[cmd.type] ?? cmd.type}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">{formatDate(cmd.created_at)}</p>

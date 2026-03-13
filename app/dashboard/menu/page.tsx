@@ -223,12 +223,12 @@ export default function MenuPage() {
             className="flex items-center gap-1.5 px-3 lg:px-4 py-2.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs lg:text-sm font-medium transition-colors">
             <FolderPlus size={15} /> <span className="hidden sm:inline">Catégorie</span>
           </button>
-          {categories.length > 0 && (
+          {/* {categories.length > 0 && (
             <button onClick={() => { setForm(FORM_INIT); setPreview(''); setShowPlatForm(true) }}
               className="flex items-center gap-1.5 px-3 lg:px-4 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs lg:text-sm font-bold transition-colors">
               <Plus size={15} /> <span className="hidden sm:inline">Ajouter un plat</span><span className="sm:hidden">Plat</span>
             </button>
-          )}
+          )} */}
         </div>
       </div>
 
